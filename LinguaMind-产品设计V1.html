@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinguaMind · Cognitive-Aware AI Reading Assistant — 产品设计 V1</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230F766E'/%3E%3Cpath d='M8 20 V10 h4 l3 6 3-6 h4 v10 h-4 v-3 l-3-6-3 6 v3z' fill='%23F6F7F9'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --paper:#F6F7F9;
+    --surface:#FFFFFF;
+    --ink:#1B2430;
+    --inkSoft:#55606D;
+    --accent:#0F766E;
+    --accentDeep:#0B5C56;
+    --accentSoft:#E5F3F1;
+    --line:#E1E6EB;
+    --code-bg:#10151C;
+    --code-ink:#D8E0E8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Noto Sans SC","PingFang SC","Helvetica Neue",system-ui,-apple-system,sans-serif;
+    line-height:1.75;
+    font-size:15px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:56px 28px 96px;}
+
+  /* ---------- 眉标 ---------- */
+  .masthead{border-bottom:2px solid var(--ink);padding-bottom:28px;margin-bottom:44px;}
+  .brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
+  .brand-name{font-size:34px;font-weight:800;letter-spacing:.5px;margin:0;}
+  .brand-sub{color:var(--accent);font-weight:600;font-size:15px;letter-spacing:.3px;}
+  .tagline{margin-top:14px;font-size:16px;color:var(--inkSoft);max-width:640px;}
+  .tagline b{color:var(--ink);font-weight:700;}
+  .meta{margin-top:18px;font-size:13px;color:var(--inkSoft);}
+
+  /* ---------- 章节 ---------- */
+  section{margin-top:56px;}
+  h2{font-size:24px;font-weight:800;margin:0 0 6px;letter-spacing:.3px;}
+  .sec-id{display:inline-block;color:var(--accent);font-weight:700;font-size:14px;margin-bottom:4px;}
+  .sec-desc{color:var(--inkSoft);font-size:14.5px;margin:0 0 26px;}
+  .rule{height:1px;background:var(--line);margin:8px 0 24px;}
+
+  /* ---------- 卡片 ---------- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin-top:16px;}
+  .card h3{font-size:17px;font-weight:700;margin:0 0 10px;}
+  .card p{margin:0 0 10px;color:var(--ink);}
+  .card p:last-child{margin-bottom:0;}
+  .card ul{margin:6px 0 0;padding-left:20px;}
+  .card li{margin:6px 0;color:var(--ink);}
+
+  /* ---------- 架构图 ---------- */
+  .pipeline{display:flex;flex-direction:column;align-items:center;margin-top:20px;}
+  .stage{
+    width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    padding:16px 20px;text-align:center;
+  }
+  .stage .st-label{font-size:13px;font-weight:600;color:var(--accent);display:block;margin-bottom:2px;}
+  .stage .st-name{font-size:16.5px;font-weight:700;}
+  .stage .st-note{font-size:13px;color:var(--inkSoft);margin-top:2px;}
+  .stage-primary{border-color:var(--accent);background:var(--accentSoft);}
+  .stage-primary .st-name{color:var(--accentDeep);}
+  .flow{display:flex;flex-direction:column;align-items:center;height:34px;justify-content:center;color:var(--accent);}
+  .flow svg{display:block;}
+  .analyzers{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:100%;}
+  .analyzer{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 12px;text-align:left;}
+  .analyzer .a-tag{display:inline-block;font-size:11px;font-weight:700;color:var(--accent);background:var(--accentSoft);border-radius:4px;padding:1px 8px;margin-bottom:8px;}
+  .analyzer .a-name{font-size:14px;font-weight:700;margin:0 0 6px;}
+  .analyzer .a-note{font-size:12px;color:var(--inkSoft);line-height:1.6;margin:0;}
+  .branch{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;}
+  .mode{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;text-align:left;}
+  .mode .m-label{font-size:12px;font-weight:700;color:var(--inkSoft);display:block;margin-bottom:4px;}
+  .mode .m-name{font-size:16px;font-weight:700;margin:0 0 8px;}
+  .mode .m-name.simple{color:var(--accent);}
+  .mode .m-name.deep{color:var(--ink);}
+  .mode .m-body{font-size:13px;color:var(--inkSoft);line-height:1.7;margin:0;}
+  .mode .m-body b{color:var(--ink);font-weight:600;}
+
+  /* ---------- 代码块 ---------- */
+  .codeblock{background:var(--code-bg);border-radius:10px;padding:18px 20px;margin-top:16px;overflow-x:auto;}
+  .codeblock pre{margin:0;font-family:"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;font-size:13px;line-height:1.65;color:var(--code-ink);white-space:pre;}
+  .code-title{font-size:13px;font-weight:600;color:var(--accent);margin-top:20px;}
+  .code-desc{font-size:13.5px;color:var(--inkSoft);margin-top:6px;}
+
+  /* ---------- 对比表 ---------- */
+  table{border-collapse:collapse;width:100%;margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;table-layout:fixed;}
+  th,td{border:1px solid var(--line);padding:12px 14px;font-size:14px;vertical-align:top;text-align:left;}
+  th{background:#EEF1F4;font-weight:700;}
+  thead th{font-size:13.5px;}
+  colgroup .c1{width:22%;}
+  colgroup .c2{width:39%;}
+  colgroup .c3{width:39%;}
+
+  /* ---------- PRD 行 ---------- */
+  .prd-row{display:grid;grid-template-columns:110px 1fr;gap:16px;padding:14px 0;border-bottom:1px solid var(--line);}
+  .prd-row:last-child{border-bottom:none;}
+  .prd-row .k{font-size:13.5px;font-weight:700;color:var(--accent);padding-top:2px;}
+  .prd-row .v{font-size:14px;color:var(--ink);}
+  .prd-row .v p{margin:0 0 6px;}
+  .prd-row .v ul{margin:0;padding-left:18px;}
+  .prd-row .v li{margin:4px 0;}
+
+  /* ---------- 时间轴 ---------- */
+  .timeline{display:grid;grid-template-columns:70px 26px 1fr;column-gap:10px;margin-top:20px;}
+  .t-time{text-align:right;font-size:12px;font-weight:700;color:var(--accent);padding-top:2px;}
+  .t-axis{position:relative;display:flex;justify-content:center;}
+  .t-axis::before{content:"";position:absolute;top:0;bottom:0;width:2px;background:var(--line);}
+  .t-dot{width:12px;height:12px;border-radius:50%;background:var(--accent);border:2px solid var(--surface);z-index:1;align-self:flex-start;margin-top:6px;}
+  .t-content{padding-bottom:22px;}
+  .t-content .t-name{font-size:15px;font-weight:700;margin:0 0 2px;}
+  .t-content .t-note{font-size:13.5px;color:var(--inkSoft);margin:0;}
+
+  @media(max-width:640px){
+    .wrap{padding:40px 18px 72px;}
+    .brand-name{font-size:27px;}
+    .analyzers{grid-template-columns:1fr 1fr;}
+    .branch{grid-template-columns:1fr;}
+    .prd-row{grid-template-columns:1fr;gap:6px;}
+    colgroup .c1{width:26%;}
+    colgroup .c2{width:37%;}
+    colgroup .c3{width:37%;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===================== 眉标 ===================== -->
+  <div class="masthead">
+    <div class="brand">
+      <span class="brand-name">LinguaMind</span>
+      <span class="brand-sub">Cognitive-Aware AI Reading Assistant</span>
+    </div>
+    <p class="tagline">不是让 AI 替用户读，而是<b>让 AI 根据人的语言认知特点辅助理解</b>——按认知负荷动态调节解释深度。</p>
+    <div class="meta">产品设计文档 · V1 · 2026-09-28 · 语言智能 × 认知负荷理论</div>
+  </div>
+
+  <!-- ===================== 01 定位 ===================== -->
+  <section>
+    <span class="sec-id">01 · 定位</span>
+    <h2>它跟普通翻译器 / 总结器有什么不同</h2>
+    <p class="sec-desc">普通工具回答"这句话什么意思"；LinguaMind 回答"这句话对<em>这个读者</em>来说有多难，以及怎么讲他才能懂"。</p>
+    <div class="card">
+      <ul>
+        <li><b>普通工具</b>：把英文翻成中文，或给出摘要。读者能不能消化，工具不关心。</li>
+        <li><b>LinguaMind</b>：先分析文本的<em>句法复杂度、词汇难度、信息密度</em>，评估读者当下的认知负荷，再决定用<b>简化模式</b>（先看懂大意）还是<b>深度模式</b>（句法树、术语、学术背景）。</li>
+      </ul>
+      <p style="margin-top:12px;">一句话：<b>它模拟的是"一位懂语言学的老师怎么给你讲"，而不是"一台翻译机怎么给你翻"。</b></p>
+    </div>
+  </section>
+
+  <!-- ===================== 02 架构图 ===================== -->
+  <section>
+    <span class="sec-id">02 · 产品架构</span>
+    <h2>核心流水线：从原文到分级解释</h2>
+    <p class="sec-desc">认知负荷评估是中枢——先量化"这段文本对你的难度"，再由它决定解释方式。</p>
+
+    <div class="pipeline">
+      <!-- 输入层 -->
+      <div class="stage">
+        <span class="st-label">INPUT</span>
+        <div class="st-name">用户上传论文 / 文章</div>
+        <div class="st-note">原文 + 用户等级（本科生 / 研究生 / 科研）+ 期望模式</div>
+      </div>
+      <div class="flow"><svg width="14" height="26" viewBox="0 0 14 26"><path d="M7 0 v18 m-5 -5 l5 7 5-7" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+
+      <!-- 预处理 -->
+      <div class="stage">
+        <span class="st-label">PREPROCESS</span>
+        <div class="st-name">文本预处理</div>
+        <div class="st-note">分段 · 清洗 · 句子切分 · 词形还原</div>
+      </div>
+      <div class="flow"><svg width="14" height="26" viewBox="0 0 14 26"><path d="M7 0 v18 m-5 -5 l5 7 5-7" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+
+      <!-- 语言分析模块 -->
+      <div class="stage stage-primary">
+        <span class="st-label">CORE · 语言分析模块（你的差异化所在）</span>
+        <div class="st-name">多维语言特征提取</div>
+        <div class="st-note">四个维度并行分析，输出结构化特征</div>
+      </div>
+      <div class="analyzers">
+        <div class="analyzer"><span class="a-tag">句法复杂度</span><p class="a-name">句法复杂度</p><p class="a-note">依存树深度、句子长度、嵌套从句数量</p></div>
+        <div class="analyzer"><span class="a-tag">词汇难度</span><p class="a-name">词汇难度</p><p class="a-note">词频 / CEFR 等级 / 学术词汇密度</p></div>
+        <div class="analyzer"><span class="a-tag">信息密度</span><p class="a-name">信息密度</p><p class="a-note">名词数、专业术语数、命名实体数</p></div>
+        <div class="analyzer"><span class="a-tag">长难句</span><p class="a-name">长难句检测</p><p class="a-note">从句嵌套、插入成分、并列结构定位</p></div>
+      </div>
+      <div class="flow"><svg width="14" height="26" viewBox="0 0 14 26"><path d="M7 0 v18 m-5 -5 l5 7 5-7" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+
+      <!-- 认知负荷评估 -->
+      <div class="stage stage-primary">
+        <span class="st-label">COGNITIVE LOAD</span>
+        <div class="st-name">认知负荷评估</div>
+        <div class="st-note">综合四个维度 + 用户等级 → 复杂度打分 + 负荷分级</div>
+      </div>
+      <div class="flow"><svg width="14" height="26" viewBox="0 0 14 26"><path d="M7 0 v18 m-5 -5 l5 7 5-7" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+
+      <!-- LLM 生成 -->
+      <div class="stage">
+        <span class="st-label">GENERATION</span>
+        <div class="st-name">LLM 生成分级解释</div>
+        <div class="st-note">把结构化分析注入 prompt，稳定输出 JSON</div>
+      </div>
+      <div class="flow"><svg width="14" height="26" viewBox="0 0 14 26"><path d="M7 0 v18 m-5 -5 l5 7 5-7" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+
+      <!-- 分支 -->
+      <div class="branch">
+        <div class="mode">
+          <span class="m-label">MODE · SIMPLE</span>
+          <p class="m-name simple">简化模式</p>
+          <p class="m-body">先讲清楚"这段话在说什么"。句子被拆成主干，生僻词用大白话解释。适合<b>高认知负荷</b>时快速抓大意。</p>
+        </div>
+        <div class="mode">
+          <span class="m-label">MODE · DEEP</span>
+          <p class="m-name deep">深度模式</p>
+          <p class="m-body">提供句法树、关键词解释、学术背景。适合<b>低负荷 + 想精读</b>时，逐层拆解。</p>
+        </div>
+      </div>
+      <div class="flow"><svg width="14" height="26" viewBox="0 0 14 26"><path d="M7 0 v18 m-5 -5 l5 7 5-7" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+
+      <!-- 输出 -->
+      <div class="stage">
+        <span class="st-label">OUTPUT</span>
+        <div class="st-name">用户界面输出</div>
+        <div class="st-note">复杂度评分 + 双模式解释 + 模式一键切换 + 反馈埋点</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 03 双模式对比 ===================== -->
+  <section>
+    <span class="sec-id">03 · 模式对比</span>
+    <h2>简化模式 vs 深度模式</h2>
+    <p class="sec-desc">同一个句子，按读者的认知负荷呈现两种讲解深度。</p>
+    <div class="card">
+      <p><b>原句：</b><em>The interaction between semantic interference and syntactic complexity places a heavy burden on the reader's working memory.</em></p>
+    </div>
+    <table>
+      <colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup>
+      <thead><tr><th>维度</th><th>简化模式</th><th>深度模式</th></tr></thead>
+      <tbody>
+        <tr><th>一句话大意</th><td>两种困难同时出现时，大脑理解会更吃力。</td><td>语义干扰与句法复杂度相互作用，占用读者工作记忆资源。</td></tr>
+        <tr><th>句法</th><td>只保留主干，拆掉嵌套。</td><td>给出句法树，标出嵌套定语从句位置。</td></tr>
+        <tr><th>术语</th><td>"semantic interference" 用大白话解释。</td><td>保留术语，附学术定义与背景。</td></tr>
+        <tr><th>适用</th><td>认知负荷高，先抓大意。</td><td>认知负荷低，想精读。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===================== 04 数据结构 ===================== -->
+  <section>
+    <span class="sec-id">04 · 数据结构</span>
+    <h2>接口定义（JSON Schema 级）</h2>
+    <p class="sec-desc">这三份结构可直接被后端复用——设计阶段先把数据定稳，后面写代码不返工。</p>
+
+    <div class="code-title">① 输入 Request</div>
+    <div class="codeblock"><pre>{
+  "text": "The interaction between semantic interference and
+          syntactic complexity places a heavy burden on working memory.",
+  "user_level": "graduate",      // undergrad | graduate | researcher
+  "mode": "deep"                 // simple | deep（可让系统自动建议）
+}</pre></div>
+    <div class="code-desc">用户等级 + 期望模式驱动"认知负荷评估"的权重与讲解深度。</div>
+
+    <div class="code-title">② 语言分析模块中间产物（核心差异化数据）</div>
+    <div class="codeblock"><pre>{
+  "sentence_analysis": {
+    "token_count": 18,
+    "sentence_length": 18,
+    "dependency_depth": 5,          // 依存树最大深度
+    "structure": "nested relative clause",
+    "has_long_clause": true
+  },
+  "vocabulary": {
+    "difficult_words": [
+      { "word": "semantic interference", "cefr": "C1", "is_academic": true },
+      { "word": "syntactic complexity",  "cefr": "C1", "is_academic": true }
+    ],
+    "academic_word_ratio": 0.35
+  },
+  "info_density": {
+    "noun_count": 6,
+    "technical_terms": 2,
+    "named_entities": 1
+  },
+  "complexity_score": 8.5,          // 0-10，认知负荷打分
+  "cognitive_load_level": "high"    // low | medium | high
+}</pre></div>
+    <div class="code-desc">这一份就是你的"护城河数据"——面试时讲清楚这些字段怎么算出来、为什么重要。</div>
+
+    <div class="code-title">③ 输出 Response</div>
+    <div class="codeblock"><pre>{
+  "complexity_score": 8.5,
+  "cognitive_load_level": "high",
+  "difficult_words": ["semantic interference"],
+  "sentence_analysis": {
+    "structure": "nested relative clause",
+    "difficulty_reason": "high syntactic load"
+  },
+  "explanation": {
+    "simple":  "两种困难同时出现时，大脑理解会更吃力。",
+    "academic": "语义干扰与句法复杂度相互作用，共同占用读者工作记忆……"
+  },
+  "recommend_mode": "deep"
+}</pre></div>
+    <div class="code-desc">explanation 由 LLM 根据②的结构化分析生成；②是证据，③是结论，二者分离、可追溯。</div>
+  </section>
+
+  <!-- ===================== 05 PRD ===================== -->
+  <section>
+    <span class="sec-id">05 · 精简 PRD</span>
+    <h2>MVP 范围与评价指标</h2>
+    <p class="sec-desc">先把最小可证明价值的版本定下来，指标从第一版就埋点。</p>
+
+    <div class="card">
+      <div class="prd-row"><div class="k">用户画像</div><div class="v">
+        <p><b>核心用户</b>：非英语母语的本科生 / 研究生，正在读英文论文，卡在长难句与专业术语。</p>
+        <p><b>次要用户</b>：科研人员、备考（雅思 / 考研英语）人群。</p>
+        <p><b>痛点</b>：翻译器给出结果却读不懂，总结器跳过细节却丢了论证。</p>
+      </div></div>
+      <div class="prd-row"><div class="k">MVP 功能</div><div class="v">
+        <ul>
+          <li>文本粘贴 / PDF 上传</li>
+          <li>四个维度的语言分析（句法、词汇、信息密度、长难句）</li>
+          <li>复杂度评分 + 负荷分级</li>
+          <li>简化 / 深度双模式解释，一键切换</li>
+          <li>用户等级选择（本科生 / 研究生 / 科研）</li>
+        </ul>
+      </div></div>
+      <div class="prd-row"><div class="k">评价指标<br>(埋点)</div><div class="v">
+        <ul>
+          <li>简化模式下，读者自评"是否看懂"的正确率（理解反馈按钮）</li>
+          <li>模式切换频率——高负荷文本是否更倾向切到简化</li>
+          <li>每次解释的"有帮助 / 没帮助"点赞点踩</li>
+          <li>平均阅读时长（相比纯翻译器是否更高效）</li>
+        </ul>
+        <p style="margin-top:8px;">这些指标让你从"功能 demo"升级为"研究型产品"——回答面试官的"你的创新凭什么成立"。</p>
+      </div></div>
+      <div class="prd-row"><div class="k">差异化护城河</div><div class="v">
+        <p>不是"会用 API"，而是<b>把语言学研究问题（人类处理复杂句的认知限制）转化成产品能力</b>——认知负荷评估这一层是别人抄不走的。</p>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ===================== 06 演进 ===================== -->
+  <section>
+    <span class="sec-id">06 · 演进路线</span>
+    <h2>从 MVP 到研究型产品</h2>
+    <div class="timeline">
+      <div class="t-time">V1<br>1-2 周</div><div class="t-axis"><span class="t-dot"></span></div><div class="t-content"><p class="t-name">单文本 MVP</p><p class="t-note">文本粘贴 → 语言分析 → 双模式解释。证明产品价值。</p></div>
+      <div class="t-time">V2<br>+1-2 周</div><div class="t-axis"><span class="t-dot"></span></div><div class="t-content"><p class="t-name">PDF + RAG</p><p class="t-note">PDF 分块 → Embedding → 检索 → 生成，支持长论文。</p></div>
+      <div class="t-time">V3<br>+1 周</div><div class="t-axis"><span class="t-dot"></span></div><div class="t-content"><p class="t-name">用户画像个性化</p><p class="t-note">记录用户偏好与学习轨迹，动态调整讲解风格。</p></div>
+      <div class="t-time">V4</div><div class="t-axis"><span class="t-dot"></span></div><div class="t-content"><p class="t-name">学习报告</p><p class="t-note">基于阅读行为与反馈，生成认知负荷与理解力报告。</p></div>
+    </div>
+    <div class="card">
+      <p style="margin:0;"><b>技术路线参考</b>：Streamlit（前端演示，1 天上手）→ Python 语言分析（spaCy：依存树、词频；CEFR 词表）→ LLM API（Structured Output 稳定输出 JSON）→ 后续再上 RAG / FastAPI / 数据库。别一上来就做后端工程。</p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
