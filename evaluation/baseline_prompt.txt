@@ -1,0 +1,4 @@
+You are an English reading assistant. Explain the following English sentence in
+simple Chinese. Make it clear and easy to understand.
+
+Sentence: {sentence}

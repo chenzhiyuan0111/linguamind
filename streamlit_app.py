@@ -1,13 +1,14 @@
 """
-LinguaMind · Streamlit 演示界面 v0.3
+LinguaMind · Streamlit 演示界面 v0.5
 ====================================
-把「语言复杂度分析 -> 估计理解负荷 -> AI 自适应讲解」串成可交互 demo。
+把「语言复杂度分析 -> 难度诊断 -> AI 自适应讲解」串成可交互 demo。
 
-v0.3 改进
+v0.5 改进
 ---------
-- 文案改为使用者导向："不是把文章翻译得更简单，而是先判断哪里难，再决定怎么解释。"
-- 展示完整的指标明细：6 个叶子指标 + 3 维度加权公式，复杂度完全可审计
-- 解释层新增"语法点讲解"区块（从句、被动、搭配、领域词汇）
+- 严谨化：字段 cognitive_load_level 更名为 reading_difficulty_level
+- 新增难度画像 Difficulty profile：三个维度 High/Medium/Low + Main drivers，
+  从"一个分数"升级为"可解释的语言诊断"
+- 文案："先分析这段文字为什么难，再决定怎么讲。"
 
 运行（独立环境）：
     cd /Users/chenzhiyuan/Doubao/chats/2026-09-28/new-chat/lingua-mind
@@ -19,7 +20,7 @@ from lingua_analysis import analyze_sentence, _NLP
 from lingua_explain import explain, API_KEY
 
 st.set_page_config(
-    page_title="LinguaMind · Cognitive-Aware Reading Assistant",
+    page_title="LinguaMind · Linguistic-Aware Reading Assistant",
     layout="wide",
 )
 
@@ -59,6 +60,20 @@ STRATEGY_CN = {
     "information": "Meaning-first · 先讲意义关系与背景",
     "balanced": "Direct · 直接讲解",
     "low": "Direct · 直接讲解",
+}
+
+# 维度水平分档（与难度等级阈值一致）
+def _level_of(score: float) -> str:
+    return "High" if score >= 6.5 else ("Medium" if score >= 3.5 else "Low")
+
+# 叶子指标 -> 人类可读的驱动因素描述（用于 Main drivers）
+DRIVER_TEXT = {
+    "sentence_length": lambda v: f"长句（{v['value']}词）",
+    "syntactic_depth": lambda v: f"深依存结构（深度{v['value']}）",
+    "subordination": lambda v: f"{v['value']}个嵌入从句",
+    "lexical_difficulty": lambda v: f"{round(v['value'] * 100)}%难词",
+    "content_word_density": lambda v: "高实词密度",
+    "structural_complexity": lambda v: f"{v['value']}处并列/插入结构",
 }
 
 # ---------- 侧边栏：读者设置 ----------
@@ -109,11 +124,11 @@ if "rows" in st.session_state:
         c1.metric("句子数", len(rows))
         c2.metric("平均复杂度", round(avg, 1))
         c3.metric("最高复杂度", round(hardest[1]["complexity_score"], 1))
-        c4.metric("最难句", LOAD_TAG[hardest[1]["cognitive_load_level"]].replace("难度", ""))
+        c4.metric("最难句", LOAD_TAG[hardest[1]["reading_difficulty_level"]].replace("难度", ""))
 
         st.markdown("#### 逐句分析")
         for i, (s, r) in enumerate(rows):
-            lv = r["cognitive_load_level"]
+            lv = r["reading_difficulty_level"]
             with st.expander(f"句 {i + 1} · 复杂度 {r['complexity_score']} · {LOAD_TAG[lv]}"):
                 st.write(s)
 
@@ -123,13 +138,29 @@ if "rows" in st.session_state:
                     f"**主要困难：{DIFF_TYPE_CN[dt]}** → 讲解策略：**{STRATEGY_CN[dt]}**"
                 )
 
-                # 叶子指标明细
+                # 难度画像：三维度水平
+                prof = " · ".join(
+                    f"{DIM_CN[k]} **{_level_of(v['score'])}**"
+                    for k, v in r["dimensions"].items()
+                )
+                st.markdown(f"**难度画像：** {prof}")
+
+                # 主要驱动因素（高分叶子指标）
+                drivers = [
+                    DRIVER_TEXT[k](v)
+                    for k, v in r["metrics"].items()
+                    if v.get("score", 0) >= 5
+                ]
+                if drivers:
+                    st.markdown("**主要驱动因素：** " + " · ".join(drivers))
+                else:
+                    st.markdown("**主要驱动因素：** 无（句子结构简单）")
+
+                # 叶子指标明细 + 加权公式（可审计）
                 leaf = "  ·  ".join(
                     f"{METRIC_CN[k]} {v['value']}→{v['score']}分" for k, v in r["metrics"].items()
                 )
                 st.caption(f"**明细指标：** {leaf}")
-
-                # 维度加权公式
                 dim = " + ".join(
                     f"{DIM_CN[k]} {v['score']}×{v['weight']}" for k, v in r["dimensions"].items()
                 )
@@ -145,7 +176,7 @@ if "rows" in st.session_state:
                                f"名词 {r['info_density']['noun_count']} 个 · "
                                f"术语 {len(r['info_density']['technical_terms'])} 个")
 
-        # ---------- LLM 双模式讲解 ----------
+        # ---------- LLM 自适应讲解 ----------
         st.divider()
         st.subheader("AI 自适应讲解")
         if not API_KEY:

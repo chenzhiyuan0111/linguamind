@@ -1,15 +1,18 @@
 """
-LinguaMind · 语言分析模块 v0.2（可解释指标体系）
+LinguaMind · 语言分析模块 v0.5（可解释指标体系）
 =================================================
 输入英文句子 -> 输出结构化分析 JSON
 
-v0.2 改进
+v0.5 改进
 ---------
+- 严谨化：输出字段 cognitive_load_level 更名为 reading_difficulty_level
+  （本项目测量的是语言复杂度/估计阅读难度，非实验测得的认知负荷）
 - 复杂度拆分为明确的叶子指标（Sentence Length / Syntactic Depth /
   Subordination / Lexical Difficulty / Content-word Density /
   Structural Complexity），每项给出 0-10 分与依据值
 - 三个维度加权合成总复杂度，权重完全透明、可审计：
       Complexity Score = w1*syntactic + w2*lexical + w3*information
+- difficulty_type 诊断：syntax / vocabulary / information / balanced / low
 - 附加 syntax_clues（被动 / 从句类型 / 并列等），供 LLM 讲解英语语法点
 
 运行方式（独立环境）:
@@ -59,7 +62,7 @@ def analyze_sentence(text: str) -> dict:
             "dimensions": {},
             "weights": WEIGHTS,
             "complexity_score": 0.0,
-            "cognitive_load_level": "low",
+            "reading_difficulty_level": "low",
             "difficulty_type": "low",
             "dimension_contributions": {},
             "vocabulary": {"difficult_words": [], "academic_word_ratio": 0.0},
@@ -183,12 +186,17 @@ def analyze_sentence(text: str) -> dict:
     if complexity_score < 3.5:
         difficulty_type = "low"
     else:
-        top_score = {
+        dim_scores = {
             "syntactic_complexity": syn,
             "lexical_difficulty": lex,
             "information_density": inf,
-        }[top_dim]
-        if dimension_contributions[top_dim] >= 0.36 and top_score >= 5:
+        }
+        top_score = dim_scores[top_dim]
+        # 主导判定需要"显著优势"：贡献占比 ≥0.36 且明显压过次高维度，
+        # 避免赢家通吃（例如信息密度 10 分却被句法 7 分盖过的情况）
+        order = sorted(dimension_contributions, key=dimension_contributions.get, reverse=True)
+        gap = dimension_contributions[order[0]] - dimension_contributions[order[1]]
+        if dimension_contributions[top_dim] >= 0.36 and top_score >= 5 and gap >= 0.10:
             difficulty_type = _DIM_TYPE[top_dim]
         else:
             difficulty_type = "balanced"
@@ -217,7 +225,7 @@ def analyze_sentence(text: str) -> dict:
         "dimensions": dimensions,
         "weights": WEIGHTS,
         "complexity_score": complexity_score,
-        "cognitive_load_level": level,
+        "reading_difficulty_level": level,
         "difficulty_type": difficulty_type,
         "dimension_contributions": dimension_contributions,
         "vocabulary": {

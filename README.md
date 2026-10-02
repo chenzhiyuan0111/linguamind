@@ -17,11 +17,13 @@ linguistic complexity  →  estimated reading difficulty  →  explanation strat
 
 This is the core question the project explores:
 
-> **Can linguistic features help an LLM explain language better?**
+> **Can linguistic diagnostics improve the way an LLM explains difficult language?**
 
 The project deliberately treats the pipeline as an *estimation* of reading
-difficulty (estimated reading load), not a measurement of actual human
-cognitive load — that distinction would require experimental validation.
+difficulty (estimated reading load / language complexity heuristic), not a
+measurement of actual human cognitive load — that distinction would require
+experimental validation, which is the direction of the planned pilot study
+(see [Pilot Evaluation](#pilot-evaluation)).
 
 ## Architecture
 
@@ -60,7 +62,10 @@ cognitive load — that distinction would require experimental validation.
   content-word density, structural complexity) aggregated into three weighted
   dimensions; every score is auditable (value + mapping rule + weight).
 - **Difficulty diagnosis** — each sentence is labeled with its dominant
-  difficulty source (`syntax` / `vocabulary` / `information` / `balanced`).
+  difficulty source (`syntax` / `vocabulary` / `information` / `balanced`),
+  plus a **difficulty profile** (per-dimension High/Medium/Low) and the
+  **main drivers** (e.g. deep dependency structure, embedded clauses,
+  proportion of difficult words) — so the score is always explainable.
 - **Strategy routing** — the diagnosis selects the explanation strategy
   (Structure-first, Vocabulary-first, Meaning-first, Direct), which is then
   injected into the LLM prompt.
@@ -102,6 +107,7 @@ lingua-mind/
 ├── lingua_analysis.py    # linguistic analysis: metrics, difficulty diagnosis
 ├── lingua_explain.py     # LLM layer: strategy routing, adaptive explanation
 ├── streamlit_app.py      # interactive demo UI
+├── evaluation/           # pilot evaluation materials (planned study)
 ├── requirements.txt
 └── LinguaMind-产品设计V1.html   # product design doc (architecture, data schema, PRD)
 ```
@@ -113,10 +119,34 @@ lingua-mind/
 - **Lexical difficulty** is currently a heuristic (word length ≥ 8 chars or
   academic suffixes). The roadmap replaces it with word frequency / CEFR
   levels / the Academic Word List.
+- **Known limitation**: because long content words raise both the lexical and
+  the information-density dimensions (feature overlap), an
+  *information-dominant* difficulty label is rare in academic text under the
+  current heuristic — the diagnosis mainly produces
+  syntax / vocabulary / balanced. Improving lexical features is the primary
+  next step.
 - **Complexity score** = 0.40 × syntactic + 0.35 × lexical + 0.25 × information
   density (weights explicit and adjustable).
 - The LLM output is forced to JSON (`response_format: json_object`) and parsed
   with a retry fallback.
+
+## Pilot Evaluation (planned)
+
+A small-scale human evaluation is planned to test the core research question:
+does the linguistically-grounded adaptive explanation actually help readers?
+
+- **Stimuli**: 10 complex English sentences (covering syntax-dominant,
+  vocabulary-dominant, information-dense, and mixed difficulty profiles).
+- **Conditions**:
+  - *Baseline*: generic LLM explanation ("Please explain this sentence.").
+  - *LinguaMind*: explanation generated after linguistic analysis
+    (difficulty diagnosis → strategy routing → adaptive prompt).
+- **Measures**: perceived clarity (1–5 rating), comprehension accuracy
+  (brief comprehension question per item), optional reading time.
+- **Target**: 5–10 participants; results reported in this README only after
+  the data are actually collected (no fabricated results).
+
+Materials and scripts live in [`evaluation/`](evaluation/).
 
 ## Roadmap
 
